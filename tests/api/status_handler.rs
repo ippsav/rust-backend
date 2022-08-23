@@ -1,29 +1,31 @@
-use hyper::{Body, Request};
-use serde_json::{json, Value};
+use hyper::{Body, Method, Request};
+use serde_json::json;
 
-use crate::helpers::TestApp;
+use crate::helpers::{Json, TestApp};
 
 #[tokio::test]
 async fn status_handler() {
     let app = TestApp::new("127.0.0.1".into(), 3000);
     app.start_server();
 
+    // Creating client
     let client = hyper::Client::new();
 
     let response = client
         .request(
             Request::builder()
+                .method(Method::GET)
                 .uri(app.get_http_uri("/status"))
                 .body(Body::empty())
                 .expect("could not create request"),
         )
         .await
         .expect("could not send request");
+
     assert!(response.status().is_success());
-    let body = hyper::body::to_bytes(response.into_body())
-        .await
-        .expect("could not convert body to bytes");
-    let value: Value = serde_json::from_slice(&body).expect("could not deserialize body");
+
+    // Getting json data
+    let value = response.json_from_body().await;
 
     let expected = json!({
         "status": "OK"

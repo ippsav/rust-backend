@@ -1,4 +1,7 @@
-use axum::Router;
+use axum::{async_trait, Router};
+use hyper::{Body, Response};
+use serde_json::Value;
+
 use std::net::TcpListener;
 
 pub struct TestApp {
@@ -36,4 +39,20 @@ fn spawn_server(listener: TcpListener, router: Router) {
             .await
             .expect("could not start server")
     });
+}
+
+#[async_trait]
+pub trait Json {
+    async fn json_from_body(self) -> Value;
+}
+
+#[async_trait]
+impl Json for Response<Body> {
+    async fn json_from_body(self) -> Value {
+        let body = hyper::body::to_bytes(self.into_body())
+            .await
+            .expect("could not convert body to bytes");
+        let value: Value = serde_json::from_slice(&body).expect("could not deserialize body");
+        value
+    }
 }
