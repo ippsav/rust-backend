@@ -26,7 +26,6 @@ impl TestApp {
         self.config.app_settings.port = listener.local_addr().unwrap().port();
         // Create server
         let router = lib::router::setup_router();
-        dbg!(&self);
         // Spawn server
         spawn_server(listener, router);
     }
