@@ -6,6 +6,7 @@ use thiserror::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    env_logger::init();
     dotenv::dotenv().ok();
     let env = dotenv::var("ENVIRONMENT").expect("could not find var ENVIRONMENT");
     // Parse Config

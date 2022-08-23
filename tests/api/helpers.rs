@@ -12,6 +12,7 @@ pub struct TestApp {
 
 impl TestApp {
     pub fn build() -> Self {
+        env_logger::init();
         // Parse Config
         let config = AppConfig::build("TEST".into()).unwrap();
 
