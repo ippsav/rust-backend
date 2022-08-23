@@ -5,7 +5,7 @@ use crate::helpers::{Json, TestApp};
 
 #[tokio::test]
 async fn status_handler() {
-    let app = TestApp::new("127.0.0.1".into(), 3000);
+    let mut app = TestApp::build();
     app.start_server();
 
     // Creating client

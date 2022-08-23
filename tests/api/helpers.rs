@@ -1,33 +1,41 @@
 use axum::{async_trait, Router};
 use hyper::{Body, Response};
+use lib::configuration::AppConfig;
 use serde_json::Value;
 
 use std::net::TcpListener;
 
+#[derive(Debug)]
 pub struct TestApp {
-    pub host: String,
-    pub port: u16,
+    pub config: AppConfig,
 }
 
 impl TestApp {
-    pub fn new(host: String, port: u16) -> Self {
-        Self { host, port }
+    pub fn build() -> Self {
+        // Parse Config
+        let config = AppConfig::build("TEST".into()).unwrap();
+
+        Self { config }
     }
 
-    pub fn start_server(&self) {
+    pub fn start_server(&mut self) {
         // Create listener
-        let address = format!("{}:{}", &self.host, self.port);
+        let address = self.config.app_settings.address();
         let listener = TcpListener::bind(address).expect("could not bind listener");
-
+        // Setting the used port in the config
+        self.config.app_settings.port = listener.local_addr().unwrap().port();
         // Create server
         let router = lib::router::setup_router();
-
+        dbg!(&self);
         // Spawn server
         spawn_server(listener, router);
     }
 
     pub fn get_http_uri(&self, path: &'static str) -> String {
-        format!("http://{}:{}{}", &self.host, self.port, path)
+        format!(
+            "http://{}:{}{}",
+            &self.config.app_settings.host, self.config.app_settings.port, path
+        )
     }
 }
 
