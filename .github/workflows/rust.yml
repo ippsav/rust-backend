@@ -28,7 +28,7 @@ jobs:
           override: true
       - name: Migrate database
         run: |
-          cargo instal sqlx-cli --features postgres 
+          cargo install sqlx-cli --features postgres 
           SKIP_DOCKER=true ./scripts/init_db.sh
       - uses: actions-rs/cargo@v1
         with:
