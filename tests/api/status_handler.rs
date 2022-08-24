@@ -6,7 +6,7 @@ use crate::helpers::{Json, TestApp};
 #[tokio::test]
 async fn status_handler() {
     let mut app = TestApp::build();
-    app.start_server();
+    app.start_server().await;
 
     // Creating client
     let client = hyper::Client::new();
@@ -22,6 +22,7 @@ async fn status_handler() {
         .await
         .expect("could not send request");
 
+    app.teardown().await;
     assert!(response.status().is_success());
 
     // Getting json data

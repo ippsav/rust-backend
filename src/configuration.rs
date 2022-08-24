@@ -7,6 +7,31 @@ pub struct AppSettings {
     pub port: u16,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct DatabaseSettings {
+    pub user: String,
+    pub password: String,
+    pub port: u16,
+    pub host: String,
+    pub db_name: String,
+}
+
+impl DatabaseSettings {
+    pub fn connection_string(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}",
+            &self.user, &self.password, &self.host, self.port
+        )
+    }
+
+    pub fn connection_string_with_db_name(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}/{}",
+            &self.user, &self.password, &self.host, self.port, &self.db_name
+        )
+    }
+}
+
 impl AppSettings {
     pub fn address(&self) -> String {
         format!("{}:{}", &self.host, self.port)
@@ -16,6 +41,7 @@ impl AppSettings {
 #[derive(Deserialize, Debug)]
 pub struct AppConfig {
     pub app_settings: AppSettings,
+    pub database_settings: DatabaseSettings,
 }
 
 impl AppConfig {
@@ -33,7 +59,7 @@ impl AppConfig {
             }
         };
 
-        Ok(config.build()?.try_deserialize()?)
+        config.build()?.try_deserialize()
     }
 }
 

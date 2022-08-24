@@ -1,5 +1,6 @@
 use lib::configuration;
 use lib::{router::setup_router, server::make_server};
+use sqlx::PgPool;
 use std::io;
 use std::net::TcpListener;
 use thiserror::Error;
@@ -12,12 +13,16 @@ async fn main() -> Result<(), Error> {
     // Parse Config
     let config = configuration::AppConfig::build(env)?;
 
+    // Setup Database connection pool
+    let db_uri = config.database_settings.connection_string_with_db_name();
+    let db_pool = PgPool::connect(&db_uri).await.unwrap();
+
     // Setup listener
     let address = config.app_settings.address();
     let listener = TcpListener::bind(address)?;
 
     // Setup router
-    let router = setup_router();
+    let router = setup_router(db_pool);
 
     make_server(listener, router).await?;
     Ok(())
@@ -26,9 +31,9 @@ async fn main() -> Result<(), Error> {
 #[derive(Error, Debug)]
 enum Error {
     #[error(transparent)]
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
     #[error(transparent)]
-    ServerError(#[from] hyper::Error),
+    Server(#[from] hyper::Error),
     #[error(transparent)]
-    ConfigError(#[from] config::ConfigError),
+    Config(#[from] config::ConfigError),
 }
