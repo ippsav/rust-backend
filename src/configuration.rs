@@ -55,7 +55,7 @@ impl AppConfig {
                 config.add_source(File::new("config/config.dev.yml", FileFormat::Yaml))
             }
             Environment::Test => {
-                config.add_source(File::new("config/config.dev.yml", FileFormat::Yaml))
+                config.add_source(File::new("config/config.test.yml", FileFormat::Yaml))
             }
         };
 
