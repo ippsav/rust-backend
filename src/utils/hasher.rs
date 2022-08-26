@@ -23,7 +23,7 @@ pub fn verify_password(password: &[u8], password_hash: &str) -> Result<bool> {
     //
     // NOTE: hash params from `parsed_hash` are used instead of what is configured in the
     // `Argon2` instance.
-    let parsed_hash = PasswordHash::new(&password_hash)?;
+    let parsed_hash = PasswordHash::new(password_hash)?;
 
     Ok(argon2.verify_password(password, &parsed_hash).is_ok())
 }

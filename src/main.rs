@@ -4,9 +4,21 @@ use sqlx::PgPool;
 use std::io;
 use std::net::TcpListener;
 use thiserror::Error;
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // a builder for `FmtSubscriber`.
+    let subscriber = FmtSubscriber::builder()
+        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // completes the builder.
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     env_logger::init();
     dotenv::dotenv().ok();
     let env = dotenv::var("ENVIRONMENT").expect("could not find var ENVIRONMENT");

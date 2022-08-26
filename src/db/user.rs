@@ -2,6 +2,7 @@ use crate::domain::user::{CreateUser, User};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+#[tracing::instrument(err)]
 pub async fn create_user(user_input: CreateUser, db_pool: &PgPool) -> Result<User, sqlx::Error> {
     let user = sqlx::query_as!(
         User,
@@ -30,15 +31,22 @@ pub async fn find_user_by_username(
     Ok(user)
 }
 
-// impl IntoResponse for CreateUserError {
-//     fn into_response(self) -> axum::response::Response {
-//         let error = match self {
-//             CreateUserError::HashingError => "could not hash_password",
-//             CreateUserError::DBError(_) => "could not insert user into db",
-//         };
-//         (status::StatusCode::INTERNAL_SERVER_ERROR, error).into_response()
-//     }
-// }
+#[tracing::instrument(err)]
+pub async fn user_exists_by_username_or_email(
+    username: &str,
+    email: &str,
+    db_pool: &PgPool,
+) -> Result<Option<i64>, sqlx::Error> {
+    let row = sqlx::query!(
+        r#"select count(*) from users where username = $1 or email = $2"#,
+        username,
+        email
+    )
+    .fetch_one(db_pool)
+    .await?;
+
+    Ok(row.count)
+}
 
 #[cfg(test)]
 mod tests {
