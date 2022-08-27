@@ -1,13 +1,15 @@
 use axum::{http::status, response::IntoResponse, Extension, Json};
-use serde::Serialize;
-use sqlx::PgPool;
+use chrono::Duration;
+use jsonwebtoken::{EncodingKey, Header};
+use serde_json::json;
 use std::sync::Arc;
 use thiserror::Error;
 use validator::{Validate, ValidationErrors};
 
 use crate::{
     db::user::{create_user, user_exists_by_username_or_email},
-    domain::user::{CreateUser, User},
+    domain::user::{Claims, CreateUser},
+    router::State,
     utils::hasher::hash_password,
 };
 
@@ -21,10 +23,9 @@ pub enum ApiError {
     HashingPassword,
     #[error(transparent)]
     DbInternalError(#[from] sqlx::Error),
+    #[error("error encoding jwt")]
+    JWTEncoding(#[from] jsonwebtoken::errors::Error),
 }
-
-#[derive(Serialize)]
-pub struct ApiResponse {}
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
@@ -45,7 +46,7 @@ impl IntoResponse for ApiError {
                 )
                     .into_response()
             }
-            ApiError::HashingPassword | ApiError::DbInternalError(_) => {
+            ApiError::HashingPassword | ApiError::DbInternalError(_) | ApiError::JWTEncoding(_) => {
                 status::StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         }
@@ -55,15 +56,17 @@ impl IntoResponse for ApiError {
 #[tracing::instrument(err)]
 pub async fn register_handler(
     Json(user_input): Json<CreateUser>,
-    Extension(db_pool): Extension<Arc<PgPool>>,
-) -> Result<Json<User>, ApiError> {
+    Extension(state): Extension<Arc<State>>,
+) -> Result<Json<serde_json::Value>, ApiError> {
     // Validating user_input
     user_input.validate()?;
+    let state = state.clone();
 
     // Check if user already exists
-    let count = user_exists_by_username_or_email(&user_input.username, &user_input.email, &db_pool)
-        .await?
-        .map_or(0, |x| x);
+    let count =
+        user_exists_by_username_or_email(&user_input.username, &user_input.email, &state.db_pool)
+            .await?
+            .map_or(0, |x| x);
 
     if count != 0 {
         return Err(ApiError::UserAlreadyRegistered);
@@ -79,9 +82,24 @@ pub async fn register_handler(
         ..user_input
     };
 
-    let db_pool = db_pool.clone();
+    let user = create_user(user_input, &state.db_pool).await?;
 
-    let user = create_user(user_input, &db_pool).await?;
+    let now = chrono::Utc::now();
 
-    Ok(Json(user))
+    let claims = Claims {
+        sub: user.id.to_string(),
+        iat: now.clone(),
+        exp: now + Duration::hours(4),
+        user,
+    };
+
+    let token = jsonwebtoken::encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(&state.jwt_secret.as_bytes()),
+    )?;
+
+    let value = json!({ "token": token });
+
+    Ok(Json(value))
 }

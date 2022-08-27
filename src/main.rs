@@ -34,7 +34,7 @@ async fn main() -> Result<(), Error> {
     let listener = TcpListener::bind(address)?;
 
     // Setup router
-    let router = setup_router(db_pool);
+    let router = setup_router(db_pool, config.app_settings.jwt_secret);
 
     make_server(listener, router).await?;
     Ok(())

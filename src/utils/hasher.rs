@@ -38,8 +38,6 @@ mod test {
 
         let hashed_password = hash_password(password.as_bytes()).unwrap();
 
-        dbg!(&hashed_password, hashed_password.len());
-
         assert!(verify_password(password.as_bytes(), hashed_password.as_str()).unwrap())
     }
 
@@ -47,8 +45,7 @@ mod test {
     fn hash_and_verify_wrong_password() {
         let password = "it_should_not_work";
 
-        let hashed_password = dbg!(hash_password(password.as_bytes()).unwrap());
-        dbg!(&hashed_password, hashed_password.len());
+        let hashed_password = hash_password(password.as_bytes()).unwrap();
 
         assert!(!verify_password("wrong_password".as_bytes(), hashed_password.as_str()).unwrap())
     }

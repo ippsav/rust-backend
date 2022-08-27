@@ -1,7 +1,7 @@
 use hyper::{Body, Method, Request};
 use serde_json::json;
 
-use crate::helpers::{Json, TestApp};
+use crate::helpers::{ParseJson, TestApp};
 
 #[tokio::test]
 async fn status_handler() {

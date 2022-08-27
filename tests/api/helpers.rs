@@ -14,8 +14,6 @@ pub struct TestApp {
 
 impl TestApp {
     pub fn build() -> Self {
-        env_logger::init();
-        // Parse Config
         let config = AppConfig::build("TEST".into()).unwrap();
 
         Self { config }
@@ -33,7 +31,8 @@ impl TestApp {
         self.config.app_settings.port = listener.local_addr().unwrap().port();
 
         // Create server
-        let router = lib::router::setup_router(db_pool);
+        let router =
+            lib::router::setup_router(db_pool, self.config.app_settings.jwt_secret.clone());
 
         // Spawn server
         spawn_server(listener, router);
@@ -115,12 +114,12 @@ fn spawn_server(listener: TcpListener, router: Router) {
 }
 
 #[async_trait]
-pub trait Json {
+pub trait ParseJson {
     async fn json_from_body(self) -> Value;
 }
 
 #[async_trait]
-impl Json for Response<Body> {
+impl ParseJson for Response<Body> {
     async fn json_from_body(self) -> Value {
         let body = hyper::body::to_bytes(self.into_body())
             .await

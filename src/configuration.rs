@@ -5,6 +5,7 @@ use serde::Deserialize;
 pub struct AppSettings {
     pub host: String,
     pub port: u16,
+    pub jwt_secret: String,
 }
 
 #[derive(Deserialize, Debug)]
