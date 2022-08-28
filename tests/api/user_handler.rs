@@ -2,7 +2,7 @@ use hyper::{Body, Method, Request};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::helpers::{ParseJson, TestApp};
+use crate::helpers::{app::TestApp, ParseJson};
 
 #[derive(Deserialize, Debug)]
 pub struct ApiResponse {
@@ -37,9 +37,8 @@ async fn register_handler_success_with_token() {
     assert!(response.status().is_success());
 
     // Getting json data
-    let value = response.json_from_body().await;
 
-    let api_response: ApiResponse = serde_json::from_value(value).unwrap();
+    let api_response: ApiResponse = response.json_from_body().await;
 
     assert!(!api_response.token.is_empty())
 }

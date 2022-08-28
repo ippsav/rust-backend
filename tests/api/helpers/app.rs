@@ -1,7 +1,5 @@
-use axum::{async_trait, Router};
-use hyper::{Body, Response};
+use axum::Router;
 use lib::configuration::{AppConfig, DatabaseSettings};
-use serde_json::Value;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -111,20 +109,4 @@ fn spawn_server(listener: TcpListener, router: Router) {
             .await
             .expect("could not start server")
     });
-}
-
-#[async_trait]
-pub trait ParseJson {
-    async fn json_from_body(self) -> Value;
-}
-
-#[async_trait]
-impl ParseJson for Response<Body> {
-    async fn json_from_body(self) -> Value {
-        let body = hyper::body::to_bytes(self.into_body())
-            .await
-            .expect("could not convert body to bytes");
-        let value: Value = serde_json::from_slice(&body).expect("could not deserialize body");
-        value
-    }
 }

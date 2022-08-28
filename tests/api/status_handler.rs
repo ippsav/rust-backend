@@ -1,7 +1,12 @@
 use hyper::{Body, Method, Request};
-use serde_json::json;
+use serde::Deserialize;
 
-use crate::helpers::{ParseJson, TestApp};
+use crate::helpers::{app::TestApp, ParseJson};
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub struct StatusResponse {
+    pub status: String,
+}
 
 #[tokio::test]
 async fn status_handler() {
@@ -26,11 +31,10 @@ async fn status_handler() {
     assert!(response.status().is_success());
 
     // Getting json data
-    let value = response.json_from_body().await;
-
-    let expected = json!({
-        "status": "OK"
-    });
+    let value: StatusResponse = response.json_from_body().await;
+    let expected = StatusResponse {
+        status: "OK".into(),
+    };
 
     assert_eq!(expected, value);
 }
