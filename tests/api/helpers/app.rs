@@ -1,7 +1,5 @@
-use axum::{async_trait, Router};
-use hyper::{Body, Response};
+use axum::Router;
 use lib::configuration::{AppConfig, DatabaseSettings};
-use serde_json::Value;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -14,8 +12,6 @@ pub struct TestApp {
 
 impl TestApp {
     pub fn build() -> Self {
-        env_logger::init();
-        // Parse Config
         let config = AppConfig::build("TEST".into()).unwrap();
 
         Self { config }
@@ -33,7 +29,8 @@ impl TestApp {
         self.config.app_settings.port = listener.local_addr().unwrap().port();
 
         // Create server
-        let router = lib::router::setup_router(db_pool);
+        let router =
+            lib::router::setup_router(db_pool, self.config.app_settings.jwt_secret.clone());
 
         // Spawn server
         spawn_server(listener, router);
@@ -112,20 +109,4 @@ fn spawn_server(listener: TcpListener, router: Router) {
             .await
             .expect("could not start server")
     });
-}
-
-#[async_trait]
-pub trait Json {
-    async fn json_from_body(self) -> Value;
-}
-
-#[async_trait]
-impl Json for Response<Body> {
-    async fn json_from_body(self) -> Value {
-        let body = hyper::body::to_bytes(self.into_body())
-            .await
-            .expect("could not convert body to bytes");
-        let value: Value = serde_json::from_slice(&body).expect("could not deserialize body");
-        value
-    }
 }

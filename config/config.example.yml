@@ -1,6 +1,7 @@
 app_settings:
   host: 'host'
   port: 1234
+  jwt_secret: 'secret'
 database_settings:
   user: 'postgres'
   password: 'password'
