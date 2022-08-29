@@ -9,7 +9,7 @@ pub struct User {
     pub id: Uuid,
     pub username: String,
     pub email: String,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing, skip_deserializing)]
     pub password_hash: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -46,5 +46,4 @@ pub struct Claims {
     pub sub: String,
     pub iat: DateTime<Utc>,
     pub exp: DateTime<Utc>,
-    pub user: User,
 }

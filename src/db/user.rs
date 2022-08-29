@@ -2,7 +2,7 @@ use crate::domain::user::{CreateUser, User};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-#[tracing::instrument(err)]
+#[tracing::instrument]
 pub async fn create_user(user_input: CreateUser, db_pool: &PgPool) -> Result<User, sqlx::Error> {
     let user = sqlx::query_as!(
         User,
@@ -15,7 +15,8 @@ pub async fn create_user(user_input: CreateUser, db_pool: &PgPool) -> Result<Use
         user_input.password
     )
     .fetch_one(db_pool)
-    .await?;
+    .await
+    .unwrap();
 
     Ok(user)
 }
@@ -31,7 +32,7 @@ pub async fn find_user_by_username(
     Ok(user)
 }
 
-#[tracing::instrument(err)]
+#[tracing::instrument]
 pub async fn user_exists_by_username_or_email(
     username: &str,
     email: &str,
