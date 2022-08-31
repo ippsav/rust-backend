@@ -204,3 +204,49 @@ async fn login_handler_with_success() {
         })
     )
 }
+
+#[tokio::test]
+async fn login_handler_failure_with_bad_credentials() {
+    let mut app = TestApp::build();
+    app.start_server().await;
+
+    // Creating client
+    let client = hyper::Client::new();
+
+    let user_input = json!({
+        "email":  "test@email.com",
+        "username": "test_username",
+        "password": "test_password"
+    });
+
+    app.create_user(&client, &user_input).await;
+
+    let login_input = json!({
+        "username": &user_input["username"],
+        "password": "wrong_password"
+    });
+
+    let req = Request::builder()
+        .method(Method::GET)
+        .uri(app.get_http_uri("/api/users/login"))
+        .header("Content-Type", "application/json")
+        .body(Body::from(login_input.to_string()))
+        .expect("could not create request");
+
+    let response = client.request(req).await.expect("could not send request");
+
+    app.teardown().await;
+
+    assert!(response.status().is_client_error());
+
+    // Getting json data
+
+    let api_response: Value = response.json_from_body().await;
+
+    assert_json_include!(
+        actual: api_response,
+        expected: json!({
+            "message": "bad credentials" ,
+        })
+    )
+}
