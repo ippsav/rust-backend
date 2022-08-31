@@ -7,11 +7,11 @@ use thiserror::Error;
 use validator::{Validate, ValidationErrors};
 
 use crate::{
-    db::user::{create_user, user_exists_by_username_or_email},
-    domain::user::{Claims, CreateUser, User},
+    db::user::{create_user, find_user_by_username, user_exists_by_username_or_email},
+    domain::user::{Claims, CreateUser, FindUser, User},
     errors::api::ApiErrorResponse,
     router::State,
-    utils::hasher::hash_password,
+    utils::hasher::{hash_password, verify_password},
 };
 
 #[derive(Error, Debug)]
@@ -20,8 +20,12 @@ pub enum ApiError {
     BadClientData(#[from] ValidationErrors),
     #[error("user already registered")]
     UserAlreadyRegistered,
+    #[error("user not found")]
+    UserNotFound,
+    #[error("wrong username or password")]
+    BadCredentials,
     #[error("could not hash password")]
-    HashingPassword,
+    HashError,
     #[error(transparent)]
     DbInternalError(#[from] sqlx::Error),
     #[error("error encoding jwt")]
@@ -54,6 +58,11 @@ impl From<ValidationErrors> for ApiErrorResponse<ResponseErrorObject> {
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         match self {
+            ApiError::UserNotFound => (
+                status::StatusCode::NOT_ACCEPTABLE,
+                Json(ApiErrorResponse::<()>::from("user not found")),
+            )
+                .into_response(),
             ApiError::UserAlreadyRegistered => (
                 status::StatusCode::CONFLICT,
                 Json(ApiErrorResponse::<()>::from("user already registered")),
@@ -64,9 +73,14 @@ impl IntoResponse for ApiError {
                 Json(ApiErrorResponse::from(err)),
             )
                 .into_response(),
-            ApiError::HashingPassword | ApiError::DbInternalError(_) | ApiError::JWTEncoding(_) => {
+            ApiError::HashError | ApiError::DbInternalError(_) | ApiError::JWTEncoding(_) => {
                 status::StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
+            ApiError::BadCredentials => (
+                status::StatusCode::NOT_ACCEPTABLE,
+                Json(ApiErrorResponse::<()>::from("bad credentials")),
+            )
+                .into_response(),
         }
     }
 }
@@ -98,7 +112,7 @@ pub async fn register_handler(
 
     // Hash password
     let hashed_password =
-        hash_password(user_input.password.as_bytes()).map_err(|_| ApiError::HashingPassword)?;
+        hash_password(user_input.password.as_bytes()).map_err(|_| ApiError::HashError)?;
 
     // Inserting User
     let user_input = CreateUser {
@@ -107,6 +121,41 @@ pub async fn register_handler(
     };
 
     let user = create_user(user_input, &state.db_pool).await?;
+
+    let now = chrono::Utc::now();
+
+    let claims = Claims {
+        sub: user.id.to_string(),
+        iat: now,
+        exp: now + Duration::hours(4),
+    };
+
+    let token = jsonwebtoken::encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(state.jwt_secret.as_bytes()),
+    )?;
+
+    let res = ApiResponse { token, user };
+
+    Ok(Json(res))
+}
+
+pub async fn login_handler(
+    Json(login_input): Json<FindUser>,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<Json<ApiResponse>, ApiError> {
+    let state = state.clone();
+
+    let user = find_user_by_username(&login_input.username, &state.db_pool)
+        .await?
+        .ok_or(ApiError::UserNotFound)?;
+
+    let is_match = verify_password(login_input.password.as_bytes(), &user.password_hash)
+        .map_err(|_| ApiError::HashError)?;
+    if !is_match {
+        return Err(ApiError::BadCredentials);
+    }
 
     let now = chrono::Utc::now();
 

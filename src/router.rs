@@ -1,4 +1,4 @@
-use crate::handler::{register_handler, status_handler};
+use crate::handler::{login_handler, register_handler, status_handler};
 use axum::{
     routing::{get, post},
     Extension, Router,
@@ -19,7 +19,9 @@ pub fn setup_router(db_pool: PgPool, jwt_secret: String) -> Router {
         jwt_secret,
     });
 
-    let user_routes = Router::new().route("/register", post(register_handler));
+    let user_routes = Router::new()
+        .route("/register", post(register_handler))
+        .route("/login", get(login_handler));
 
     let api_routes = Router::new().nest("/users", user_routes);
 
