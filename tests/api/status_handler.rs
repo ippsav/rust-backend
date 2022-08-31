@@ -1,6 +1,6 @@
 use hyper::{Body, Method, Request};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::helpers::{app::TestApp, ParseJson};
 use assert_json_diff::assert_json_include;
@@ -33,7 +33,7 @@ async fn status_handler() {
     assert!(response.status().is_success());
 
     // Getting json data
-    let value = response.json_from_body().await;
+    let value: Value = response.json_from_body().await;
 
     assert_json_include! {
         actual: value,

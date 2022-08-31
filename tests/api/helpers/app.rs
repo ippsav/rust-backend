@@ -1,9 +1,13 @@
 use axum::Router;
+use hyper::{client::HttpConnector, Body, Method, Request};
 use lib::configuration::{AppConfig, DatabaseSettings};
+use serde_json::Value;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
 use std::net::TcpListener;
+
+use super::ParseJson;
 
 #[derive(Debug)]
 pub struct TestApp {
@@ -98,6 +102,25 @@ AND pid <> pg_backend_pid();"#,
             "http://{}:{}{}",
             &self.config.app_settings.host, self.config.app_settings.port, path
         )
+    }
+
+    pub async fn create_user(
+        &self,
+        client: &hyper::Client<HttpConnector>,
+        input: &Value,
+    ) -> String {
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(self.get_http_uri("/api/users/register"))
+            .header("Content-Type", "application/json")
+            .body(Body::from(input.to_string()))
+            .expect("could not create request");
+
+        let response = client.request(req).await.expect("could not send request");
+
+        let body: Value = response.json_from_body().await;
+
+        body["token"].to_string()
     }
 }
 
